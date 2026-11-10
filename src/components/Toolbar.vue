@@ -12,6 +12,7 @@ import {
   PaintBucket,
   RotateCcw,
   Underline,
+  Percent,
 } from "lucide-vue-next";
 import {
   DEFAULT_FILL_COLOR,
@@ -63,7 +64,7 @@ const isBold = computed(() => !!props.activeStyle.bold);
 const isItalic = computed(() => !!props.activeStyle.italic);
 const isUnderline = computed(() => !!props.activeStyle.underline);
 const align = computed(() => props.activeStyle.align);
-
+const isPercent = computed(() => !!props.activeStyle.percent);
 /* ---------- Handlers ---------- */
 
 function trigger(action: SheetAction) {
@@ -231,6 +232,17 @@ function trigger(action: SheetAction) {
         @click="trigger('increase-decimal')"
       >
         <span class="tb-decimal-text">.00</span> +
+      </button>
+
+      <button
+        type="button"
+        class="tb-btn"
+        :class="{ active: isPercent }"
+        title="Format Persentase"
+        :aria-pressed="isPercent"
+        @click="trigger('toggle-percent')"
+      >
+        <Percent :size="15" :stroke-width="2.25" />
       </button>
     </div>
 

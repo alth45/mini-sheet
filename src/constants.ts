@@ -69,6 +69,7 @@ export interface CellStyle {
   bg?: string;
   align?: AlignValue;
   decimals?: number;
+  percent?: boolean;
 }
 
 /* ---------- Sheet Data ---------- */
@@ -113,6 +114,7 @@ export type SheetAction =
   | "clear-format"
   | "increase-decimal"
   | "decrease-decimal"
+  | "toggle-percent"
   | "f-sum"
   | "f-average"
   | "f-max"
@@ -189,17 +191,33 @@ export function clamp(v: number, min: number, max: number): number {
  * - Bulatkan 10 digit untuk hindari floating-point artifact.
  * - Boolean → "TRUE" / "FALSE".
  */
-export function formatValue(v: EvalValue, decimals?: number): string {
+export function formatValue(
+  v: EvalValue,
+  decimals?: number,
+  percent?: boolean,
+): string {
   if (v === null || v === undefined) return "";
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+
   if (typeof v === "number") {
     if (!Number.isFinite(v)) return "#DIV/0!";
+
+    // Persen: kalikan 100, lalu format dengan decimals + "%"
+    if (percent) {
+      const scaled = v * 100;
+      const d = decimals ?? 0;
+      if (Math.abs(scaled) < 1e21) return scaled.toFixed(d) + "%";
+      return String(scaled) + "%";
+    }
+
+    // Desimal eksplisit
     if (decimals !== undefined) {
-      // toFixed fallback ke eksponensial untuk |v| >= 1e21 — pakai default
       if (Math.abs(v) < 1e21) return v.toFixed(decimals);
     }
+
     return String(Math.round(v * 1e10) / 1e10);
   }
+
   return String(v);
 }
 

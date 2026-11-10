@@ -153,14 +153,16 @@ export function useSheet(options: UseSheetOptions = {}) {
     const raw = data[ref] ?? "";
     if (raw === "") return { display: "", isNumeric: false, error: false };
 
-    const decimals = styles[ref]?.decimals;
+    const st = styles[ref];
+    const decimals = st?.decimals;
+    const percent = st?.percent;
 
     // Formula
     if (raw.startsWith("=")) {
       try {
         const v: EvalValue = engine.evalCell(ref);
         return {
-          display: formatValue(v, decimals),
+          display: formatValue(v, decimals, percent),
           isNumeric: typeof v === "number",
           error: false,
         };
@@ -176,9 +178,9 @@ export function useSheet(options: UseSheetOptions = {}) {
     // Literal
     const t = raw.trim();
     const isNumeric = t !== "" && !Number.isNaN(Number(t));
-    if (isNumeric && decimals !== undefined) {
+    if (isNumeric && (decimals !== undefined || percent)) {
       return {
-        display: formatValue(Number(t), decimals),
+        display: formatValue(Number(t), decimals, percent),
         isNumeric: true,
         error: false,
       };
@@ -423,6 +425,11 @@ export function useSheet(options: UseSheetOptions = {}) {
   function decreaseDecimal() {
     adjustDecimals(-1);
   }
+  function togglePercent() {
+    const cur = styles[activeRef.value];
+    const on = !!(cur && cur.percent);
+    setStyle("percent", on ? null : true);
+  }
 
   /* =========================================================
      Action dispatcher
@@ -465,6 +472,9 @@ export function useSheet(options: UseSheetOptions = {}) {
         return null;
       case "decrease-decimal":
         decreaseDecimal();
+        return null;
+      case "toggle-percent":
+        togglePercent();
         return null;
       case "f-sum":
         return buildFunctionFormula("SUM");
@@ -513,6 +523,7 @@ export function useSheet(options: UseSheetOptions = {}) {
     loadSheet,
     increaseDecimal,
     decreaseDecimal,
+    togglePercent,
     // selection
     selectCell,
     extendTo,

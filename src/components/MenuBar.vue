@@ -24,6 +24,7 @@ import {
   TrendingUp,
   Underline,
   Minus,
+  Percent,
 } from "lucide-vue-next";
 import type { SheetAction } from "@/constants";
 
@@ -121,6 +122,7 @@ const menus: MenuGroup[] = [
       { separator: true },
       { label: "Tambah Desimal", action: "increase-decimal", icon: Plus },
       { label: "Kurangi Desimal", action: "decrease-decimal", icon: Minus },
+      { label: "Format Persentase", action: "toggle-percent", icon: Percent },
       { separator: true },
       { label: "Hapus Format", action: "clear-format", icon: Eraser },
     ],
