@@ -1,0 +1,213 @@
+/* =========================================================
+   Grid Component Styles
+   Dipakai oleh: src/components/Grid.vue
+   ========================================================= */
+
+/* =========================================================
+   Grid wrapper
+   ========================================================= */
+.grid-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--bg-surface);
+  position: relative;
+}
+
+.sheet {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-size: 12px;
+  user-select: none;
+}
+
+/* =========================================================
+   Headers (sticky)
+   ========================================================= */
+.sheet thead th,
+.sheet tbody th {
+  background: var(--slate-50);
+  color: var(--slate-500);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  height: 28px;
+  padding: 0 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+/* Col headers sticky top */
+.sheet thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+/* Row headers sticky left */
+.sheet tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+/* Corner sticky both */
+.sheet thead th.corner {
+  left: 0;
+  z-index: 5;
+  cursor: pointer;
+  border-right: 1px solid var(--border-strong);
+  position: sticky;
+  background: var(--slate-50);
+}
+
+/* Corner triangle hint */
+.sheet thead th.corner::after {
+  content: "";
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 5px 5px;
+  border-color: transparent transparent var(--slate-400) transparent;
+  pointer-events: none;
+}
+
+/* Clickable headers */
+.sheet thead th.colhead,
+.sheet tbody th.rowhead {
+  cursor: pointer;
+  transition:
+    background-color var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+.sheet thead th.colhead:hover,
+.sheet tbody th.rowhead:hover {
+  background: var(--slate-100);
+  color: var(--slate-700);
+}
+
+/* Highlighted headers (in-selection) */
+.sheet thead th.hl,
+.sheet tbody th.hl {
+  background: var(--primary-50);
+  color: var(--primary-700);
+}
+
+/* =========================================================
+   Column resize handle
+   ========================================================= */
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 2;
+  user-select: none;
+  touch-action: none;
+}
+
+/* Garis feedback saat hover — subtle */
+.col-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 20%;
+  bottom: 20%;
+  left: 50%;
+  width: 1.5px;
+  background: var(--primary-500);
+  border-radius: 1px;
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: center;
+  opacity: 0;
+  transition:
+    opacity var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.sheet thead th.colhead:hover .col-resize-handle::after {
+  opacity: 1;
+  transform: translateX(-50%) scaleY(1);
+}
+
+/* =========================================================
+   Cells
+   ========================================================= */
+.sheet td.cell {
+  padding: 0 5px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--slate-800);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+  cursor: cell;
+  position: relative;
+}
+
+/* Tint seluruh sel dalam range (subtle) */
+.sheet td.cell.in-range {
+  box-shadow: inset 0 0 0 9999px rgba(99, 102, 241, 0.06);
+}
+
+/* =========================================================
+   Selection overlay + fill handle
+   ========================================================= */
+.selection-overlay {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid var(--primary-500);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.15);
+  z-index: 2;
+  box-sizing: border-box;
+}
+
+.fill-handle {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 8px;
+  height: 8px;
+  background: var(--primary-500);
+  border: 1px solid #fff;
+  border-radius: 1px;
+  cursor: crosshair;
+  pointer-events: auto;
+  box-sizing: border-box;
+  transition: background-color var(--dur) var(--ease);
+}
+
+.fill-handle::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
+
+.fill-handle:hover {
+  background: var(--primary-600);
+}
+
+/* Preview target (dashed) */
+.fill-preview {
+  position: absolute;
+  pointer-events: none;
+  border: 1.5px dashed var(--primary-500);
+  background: rgba(99, 102, 241, 0.04);
+  border-radius: 1px;
+  box-sizing: border-box;
+  z-index: 1;
+}
