@@ -10,7 +10,7 @@
 [![Vite](https://img.shields.io/badge/Vite-6-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](./LICENSE)
 
-![Preview](./docs/preview.png)
+![Preview](./docs/preview.PNG)
 
 </div>
 
@@ -75,7 +75,7 @@ npm install
 # Jalankan dev server
 npm run dev
 ```
-````
+
 
 Buka [http://localhost:5173](http://localhost:5173) — browser akan terbuka otomatis.
 
