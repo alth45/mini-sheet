@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output (Vite)
+dist/
+*.local
+
+# TypeScript / Vite build cache
+.tmp/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / editor
+.vscode/
+*.code-workspace
+.idea/
+*.iml

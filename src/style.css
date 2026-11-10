@@ -1,0 +1,186 @@
+/* =========================================================
+   MiniSheet — Design Tokens & Base Styles
+   Palet: Indigo / Slate (mirip Linear, Notion, Vercel)
+   ========================================================= */
+
+:root {
+  /* ---------- Brand ---------- */
+  --primary-50: #eef2ff;
+  --primary-100: #e0e7ff;
+  --primary-200: #c7d2fe;
+  --primary-400: #818cf8;
+  --primary-500: #6366f1; /* warna utama */
+  --primary-600: #4f46e5;
+  --primary-700: #4338ca;
+
+  /* ---------- Neutral (Slate) ---------- */
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
+
+  /* ---------- Semantic ---------- */
+  --success-50: #f0fdf4;
+  --success-500: #22c55e;
+  --success-700: #15803d;
+  --danger-50: #fef2f2;
+  --danger-500: #ef4444;
+  --danger-700: #b91c1c;
+  --warning-500: #f59e0b;
+
+  /* ---------- Surface ---------- */
+  --bg-app: var(--slate-50);
+  --bg-surface: #ffffff;
+  --bg-muted: var(--slate-100);
+  --bg-hover: var(--slate-100);
+  --bg-selected: var(--primary-50);
+
+  /* ---------- Border ---------- */
+  --border: var(--slate-200);
+  --border-strong: var(--slate-300);
+
+  /* ---------- Text ---------- */
+  --text: var(--slate-900);
+  --text-muted: var(--slate-500);
+  --text-faint: var(--slate-400);
+
+  /* ---------- Radius ---------- */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  /* ---------- Shadow ---------- */
+  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow-sm:
+    0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.06);
+  --shadow-md:
+    0 4px 6px -1px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.06);
+  --shadow-lg:
+    0 10px 15px -3px rgb(15 23 42 / 0.1), 0 4px 6px -4px rgb(15 23 42 / 0.06);
+  --shadow-focus: 0 0 0 3px rgb(99 102 241 / 0.18);
+
+  /* ---------- Typography ---------- */
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Consolas, "Courier New", monospace;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-lg: 14px;
+
+  /* ---------- Layout ---------- */
+  --header-h: 44px;
+  --toolbar-h: 40px;
+  --formula-h: 32px;
+  --status-h: 26px;
+
+  /* ---------- Transition ---------- */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur: 120ms;
+}
+
+/* =========================================================
+   Reset & Base
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--text);
+  background: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11"; /* Inter alt glyphs */
+  overflow: hidden;
+}
+
+/* Scrollbar modern (thin & subtle) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--slate-300) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--slate-300);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--slate-400);
+  background-clip: padding-box;
+}
+
+/* =========================================================
+   Form Controls — Base
+   ========================================================= */
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  border-radius: var(--radius);
+  transition:
+    background-color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+button:hover {
+  background: var(--bg-hover);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+select,
+input {
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+
+select:focus,
+input:focus {
+  outline: none;
+  border-color: var(--primary-500) !important;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Utility */
+.mono {
+  font-family: var(--font-mono);
+}
