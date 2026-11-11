@@ -452,6 +452,40 @@ export function useSheet(options: UseSheetOptions = {}) {
     });
   }
 
+  function setCustomDateFormat(pattern: string | null) {
+    forEachSelected((ref) => {
+      if (!styles[ref]) styles[ref] = {};
+      const s = styles[ref];
+      if (pattern === null) {
+        if (s.format === "custom-date") delete s.format;
+        delete s.customDateFormat;
+      } else {
+        s.format = "custom-date";
+        s.customDateFormat = pattern;
+        delete s.percent;
+        delete s.currency;
+      }
+      cleanupStyle(ref);
+    });
+  }
+
+  function setCustomNumberFormat(pattern: string | null) {
+    forEachSelected((ref) => {
+      if (!styles[ref]) styles[ref] = {};
+      const s = styles[ref];
+      if (pattern === null) {
+        if (s.format === "custom-number") delete s.format;
+        delete s.customNumberFormat;
+      } else {
+        s.format = "custom-number";
+        s.customNumberFormat = pattern;
+        delete s.percent;
+        delete s.currency;
+      }
+      cleanupStyle(ref);
+    });
+  }
+
   /* =========================================================
      Bulk operations
      ========================================================= */
@@ -571,6 +605,9 @@ export function useSheet(options: UseSheetOptions = {}) {
       case "set-format-finance":
         setCellFormat("finance");
         return null;
+      case "open-custom-date":
+      case "open-custom-number":
+        return null;
       case "f-sum":
         return buildFunctionFormula("SUM");
       case "f-average":
@@ -621,6 +658,8 @@ export function useSheet(options: UseSheetOptions = {}) {
     togglePercent,
     toggleCurrency,
     setCellFormat,
+    setCustomDateFormat,
+    setCustomNumberFormat,
     // selection
     selectCell,
     extendTo,

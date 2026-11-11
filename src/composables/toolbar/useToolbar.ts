@@ -8,6 +8,8 @@ import {
   Hash,
   Sparkles,
   Type,
+  Calendar,
+  Sliders,
 } from "lucide-vue-next";
 import {
   DEFAULT_FILL_COLOR,
@@ -32,6 +34,8 @@ const FORMAT_ICONS: Record<CellFormat, Component> = {
   scientific: FlaskConical,
   currency: DollarSign,
   finance: Banknote,
+  "custom-date": Calendar,
+  "custom-number": Sliders,
 };
 
 /* =========================================================
@@ -121,7 +125,13 @@ export function useToolbar(getStyle: () => CellStyle, emit: ToolbarEmit) {
 
   function selectFormat(format: CellFormat) {
     closeFormatMenu();
-    trigger(`set-format-${format}` as SheetAction);
+    if (format === "custom-date") {
+      trigger("open-custom-date");
+    } else if (format === "custom-number") {
+      trigger("open-custom-number");
+    } else {
+      trigger(`set-format-${format}` as SheetAction);
+    }
   }
 
   function getFormatIcon(format: CellFormat): Component {

@@ -353,3 +353,9 @@
   opacity: 0;
   transform: translateY(-3px) scale(0.97);
 }
+
+.tb-dropdown-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 2px;
+}

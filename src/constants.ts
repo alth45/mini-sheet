@@ -73,6 +73,8 @@ export interface CellStyle {
   decimals?: number;
   percent?: boolean;
   currency?: boolean;
+  customDateFormat?: string;
+  customNumberFormat?: string;
   format?: CellFormat;
 }
 
@@ -127,6 +129,8 @@ export type SheetAction =
   | "set-format-scientific"
   | "set-format-currency"
   | "set-format-finance"
+  | "open-custom-date"
+  | "open-custom-number"
   | "f-sum"
   | "f-average"
   | "f-max"

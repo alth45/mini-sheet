@@ -265,35 +265,42 @@ const {
               left: panelPosition.left + 'px',
             }"
           >
-            <button
-              v-for="opt in CELL_FORMAT_OPTIONS"
-              :key="opt.value"
-              type="button"
-              class="tb-dropdown-item"
-              :class="{ active: currentFormat === opt.value }"
-              role="menuitemradio"
-              :aria-checked="currentFormat === opt.value"
-              @click="selectFormat(opt.value)"
-            >
-              <component
-                :is="getFormatIcon(opt.value)"
-                :size="14"
-                :stroke-width="2"
-                class="tb-dropdown-item-icon"
+            <template v-for="(opt, idx) in CELL_FORMAT_OPTIONS" :key="idx">
+              <div
+                v-if="'type' in opt && opt.type === 'separator'"
+                class="tb-dropdown-sep"
               />
-              <div class="tb-dropdown-item-text">
-                <span class="tb-dropdown-item-label">{{ opt.label }}</span>
-                <span class="tb-dropdown-item-desc">{{ opt.description }}</span>
-              </div>
-              <span class="tb-dropdown-item-example">{{ opt.example }}</span>
-              <component
-                v-if="currentFormat === opt.value"
-                :is="CheckIcon"
-                :size="13"
-                :stroke-width="2.5"
-                class="tb-dropdown-item-check"
-              />
-            </button>
+              <button
+                v-else-if="'value' in opt"
+                type="button"
+                class="tb-dropdown-item"
+                :class="{ active: currentFormat === opt.value }"
+                role="menuitemradio"
+                :aria-checked="currentFormat === opt.value"
+                @click="selectFormat(opt.value)"
+              >
+                <component
+                  :is="getFormatIcon(opt.value)"
+                  :size="14"
+                  :stroke-width="2"
+                  class="tb-dropdown-item-icon"
+                />
+                <div class="tb-dropdown-item-text">
+                  <span class="tb-dropdown-item-label">{{ opt.label }}</span>
+                  <span class="tb-dropdown-item-desc">{{
+                    opt.description
+                  }}</span>
+                </div>
+                <span class="tb-dropdown-item-example">{{ opt.example }}</span>
+                <component
+                  v-if="currentFormat === opt.value"
+                  :is="CheckIcon"
+                  :size="13"
+                  :stroke-width="2.5"
+                  class="tb-dropdown-item-check"
+                />
+              </button>
+            </template>
           </div>
         </Transition>
       </Teleport>

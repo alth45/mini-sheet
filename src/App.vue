@@ -15,7 +15,8 @@ import FormulaBar from "@/components/FormulaBar.vue";
 import Grid from "@/components/Grid.vue";
 import CellEditor from "@/components/CellEditor.vue";
 import StatusBar from "@/components/StatusBar.vue";
-
+import DateFormatModal from "@/components/modals/DateFormatModal.vue";
+import NumberFormatModal from "@/components/modals/NumberFormatModal.vue";
 /* ---------- Types ---------- */
 
 interface EditorRect {
@@ -50,6 +51,8 @@ const editorDraft = ref<string | null>(null);
 
 const aboutOpen = ref(false);
 const resetConfirmOpen = ref(false);
+const dateFormatOpen = ref(false);
+const numberFormatOpen = ref(false);
 
 const gridRef = ref<GridExposed | null>(null);
 const formulaBarRef = ref<FormulaBarExposed | null>(null);
@@ -143,6 +146,14 @@ function handleAction(action: SheetAction) {
     aboutOpen.value = true;
     return;
   }
+  if (action === "open-custom-date") {
+    dateFormatOpen.value = true;
+    return;
+  }
+  if (action === "open-custom-number") {
+    numberFormatOpen.value = true;
+    return;
+  }
   const result = sheet.dispatch(action);
   if (typeof result === "string") {
     formulaBarRef.value?.setValue(result);
@@ -156,6 +167,26 @@ function handleToolbarSetStyle(key: keyof CellStyle, value: unknown) {
 function confirmReset() {
   resetConfirmOpen.value = false;
   sheet.dispatch("new");
+}
+
+function handleApplyDateFormat(pattern: string) {
+  sheet.setCustomDateFormat(pattern);
+  dateFormatOpen.value = false;
+}
+
+function handleClearDateFormat() {
+  sheet.setCustomDateFormat(null);
+  dateFormatOpen.value = false;
+}
+
+function handleApplyNumberFormat(pattern: string) {
+  sheet.setCustomNumberFormat(pattern);
+  numberFormatOpen.value = false;
+}
+
+function handleClearNumberFormat() {
+  sheet.setCustomNumberFormat(null);
+  numberFormatOpen.value = false;
 }
 
 /* =========================================================
@@ -396,6 +427,30 @@ onBeforeUnmount(() => {
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Date format modal -->
+    <DateFormatModal
+      v-if="dateFormatOpen"
+      :current-pattern="
+        sheet.activeStyle.value.customDateFormat ?? 'DD/MM/YYYY'
+      "
+      :preview-value="sheet.rawFor(sheet.activeRef.value)"
+      @apply="handleApplyDateFormat"
+      @clear="handleClearDateFormat"
+      @close="dateFormatOpen = false"
+    />
+
+    <!-- Number format modal -->
+    <NumberFormatModal
+      v-if="numberFormatOpen"
+      :current-pattern="
+        sheet.activeStyle.value.customNumberFormat ?? '#.##0,00'
+      "
+      :preview-value="sheet.rawFor(sheet.activeRef.value)"
+      @apply="handleApplyNumberFormat"
+      @clear="handleClearNumberFormat"
+      @close="numberFormatOpen = false"
+    />
 
     <!-- ============================================================
          Reset confirm modal
