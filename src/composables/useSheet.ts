@@ -4,12 +4,9 @@
    Sumber kebenaran tunggal untuk:
    - data sel & style (reactive)
    - seleksi (activeRef, selStart, selEnd)
+   - lebar kolom (reactive)
    - formula engine (di-wire dengan reactive data)
    - semua action (setRaw, setStyle, dispatch, dll)
-
-   Design: factory function → tiap komponen bisa punya
-   instance sendiri (berguna untuk unit test / multi-sheet
-   nanti), tapi saat ini App membuat satu instance global.
    ========================================================= */
 
 import { computed, reactive, ref, type ComputedRef } from "vue";
@@ -24,17 +21,17 @@ import {
   type AlignValue,
   COLS,
   NROWS,
+  COL_W,
   MIN_COL_W,
   MAX_COL_W,
   refToRC,
   rcToRef,
   clamp,
-  formatValue,
   adjustFormulaRelative,
   countDecimals,
   MAX_DECIMALS,
-  COL_W,
 } from "@/constants";
+import { formatCellValue, type CellFormat } from "@/formatters/cellFormat";
 import {
   createFormulaEngine,
   FormulaError,
@@ -72,17 +69,19 @@ const EMPTY_STYLE: CellStyle = Object.freeze({});
 
 export function useSheet(options: UseSheetOptions = {}) {
   /* ---------- Reactive state ---------- */
+
   const data = reactive<CellMap>({ ...(options.data ?? {}) });
   const styles = reactive<StyleMap>({ ...(options.styles ?? {}) });
-
   const colWidths = reactive<number[]>(
     Array.from({ length: COLS.length }, () => COL_W),
   );
+
   const activeRef = ref<CellRef>(options.activeRef ?? "A1");
   const selStart = ref<CellRef>(activeRef.value);
   const selEnd = ref<CellRef>(activeRef.value);
 
-  /* ---------- Formula engine (dipanggil di computed → reaktif) ---------- */
+  /* ---------- Formula engine ---------- */
+
   const engine: FormulaEngine = createFormulaEngine((ref) => data[ref] ?? "");
 
   /* =========================================================
@@ -134,6 +133,46 @@ export function useSheet(options: UseSheetOptions = {}) {
   });
 
   /* =========================================================
+     Internal helpers
+     ========================================================= */
+
+  /** Iterasi semua ref dalam seleksi saat ini. */
+  function forEachSelected(fn: (ref: CellRef) => void) {
+    const { r1, r2, c1, c2 } = selRect.value;
+    for (let r = r1; r <= r2; r++) {
+      for (let c = c1; c <= c2; c++) {
+        fn(rcToRef(c, r));
+      }
+    }
+  }
+
+  /** Hapus entry style jika sudah kosong. */
+  function cleanupStyle(ref: CellRef) {
+    const s = styles[ref];
+    if (s && Object.keys(s).length === 0) {
+      delete styles[ref];
+    }
+  }
+
+  /** Ambil nilai numerik mentah (formula → eval; teks/error → null). */
+  function getNumericValue(ref: CellRef): number | null {
+    const raw = data[ref] ?? "";
+    if (raw === "") return null;
+    if (raw.startsWith("=")) {
+      try {
+        const v = engine.evalCell(ref);
+        return typeof v === "number" && Number.isFinite(v) ? v : null;
+      } catch {
+        return null;
+      }
+    }
+    const t = raw.trim();
+    if (t === "" || Number.isNaN(Number(t))) return null;
+    const n = Number(t);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /* =========================================================
      Reading API
      ========================================================= */
 
@@ -154,15 +193,19 @@ export function useSheet(options: UseSheetOptions = {}) {
     if (raw === "") return { display: "", isNumeric: false, error: false };
 
     const st = styles[ref];
-    const decimals = st?.decimals;
-    const percent = st?.percent;
+    const ctx = {
+      decimals: st?.decimals,
+      percent: st?.percent,
+      currency: st?.currency,
+      format: st?.format,
+    };
 
     // Formula
     if (raw.startsWith("=")) {
       try {
         const v: EvalValue = engine.evalCell(ref);
         return {
-          display: formatValue(v, decimals, percent),
+          display: formatCellValue(v, ctx),
           isNumeric: typeof v === "number",
           error: false,
         };
@@ -178,9 +221,15 @@ export function useSheet(options: UseSheetOptions = {}) {
     // Literal
     const t = raw.trim();
     const isNumeric = t !== "" && !Number.isNaN(Number(t));
-    if (isNumeric && (decimals !== undefined || percent)) {
+    if (
+      isNumeric &&
+      (ctx.decimals !== undefined ||
+        ctx.percent ||
+        ctx.currency ||
+        (ctx.format && ctx.format !== "general"))
+    ) {
       return {
-        display: formatValue(Number(t), decimals, percent),
+        display: formatCellValue(Number(t), ctx),
         isNumeric: true,
         error: false,
       };
@@ -205,22 +254,18 @@ export function useSheet(options: UseSheetOptions = {}) {
     key: K,
     value: CellStyle[K] | null,
   ) {
-    const rect = selRect.value;
-    for (let r = rect.r1; r <= rect.r2; r++) {
-      for (let c = rect.c1; c <= rect.c2; c++) {
-        const ref = rcToRef(c, r);
-        if (!styles[ref]) styles[ref] = {};
-        const s = styles[ref];
+    forEachSelected((ref) => {
+      if (!styles[ref]) styles[ref] = {};
+      const s = styles[ref];
 
-        if (value === null || value === undefined) {
-          delete s[key];
-        } else {
-          s[key] = value;
-        }
-
-        if (Object.keys(s).length === 0) delete styles[ref];
+      if (value === null || value === undefined) {
+        delete s[key];
+      } else {
+        s[key] = value;
       }
-    }
+
+      cleanupStyle(ref);
+    });
   }
 
   /** Toggle bold/italic/underline untuk sel aktif. */
@@ -273,6 +318,10 @@ export function useSheet(options: UseSheetOptions = {}) {
     for (let i = 0; i < colWidths.length; i++) colWidths[i] = COL_W;
   }
 
+  /* =========================================================
+     Fill handle
+     ========================================================= */
+
   /**
    * Isi range target dari source (fill handle).
    * - Source 1 cell  → copy ke semua target
@@ -292,8 +341,9 @@ export function useSheet(options: UseSheetOptions = {}) {
           r <= source.r2 &&
           c >= source.c1 &&
           c <= source.c2
-        )
+        ) {
           continue;
+        }
 
         const relR = (((r - source.r1) % srcH) + srcH) % srcH;
         const relC = (((c - source.c1) % srcW) + srcW) % srcW;
@@ -326,17 +376,85 @@ export function useSheet(options: UseSheetOptions = {}) {
   }
 
   /* =========================================================
-     Bulk operations
+     Format: decimals, percent, currency, explicit format
      ========================================================= */
 
-  function forEachSelected(fn: (ref: CellRef) => void) {
-    const rect = selRect.value;
-    for (let r = rect.r1; r <= rect.r2; r++) {
-      for (let c = rect.c1; c <= rect.c2; c++) {
-        fn(rcToRef(c, r));
+  function adjustDecimals(delta: number) {
+    forEachSelected((ref) => {
+      const cur = styles[ref]?.decimals;
+      let base: number;
+      if (cur !== undefined) {
+        base = cur;
+      } else {
+        const val = getNumericValue(ref);
+        base = val !== null ? countDecimals(val) : 0;
       }
-    }
+      const next = Math.min(Math.max(base + delta, 0), MAX_DECIMALS);
+      if (!styles[ref]) styles[ref] = {};
+      styles[ref].decimals = next;
+    });
   }
+
+  function increaseDecimal() {
+    adjustDecimals(1);
+  }
+
+  function decreaseDecimal() {
+    adjustDecimals(-1);
+  }
+
+  /**
+   * Toggle flag format (percent / currency) untuk sel aktif.
+   * Saat ON → clear format eksplisit + flag lain (mutually exclusive).
+   */
+  function toggleFormatFlag(
+    flag: "percent" | "currency",
+    other: "percent" | "currency",
+  ) {
+    const isOn = !!styles[activeRef.value]?.[flag];
+    forEachSelected((ref) => {
+      if (!styles[ref]) styles[ref] = {};
+      const s = styles[ref];
+      if (!isOn) {
+        s[flag] = true;
+        delete s.format;
+        delete s[other];
+      } else {
+        delete s[flag];
+      }
+      cleanupStyle(ref);
+    });
+  }
+
+  function togglePercent() {
+    toggleFormatFlag("percent", "currency");
+  }
+
+  function toggleCurrency() {
+    toggleFormatFlag("currency", "percent");
+  }
+
+  function setCellFormat(format: CellFormat) {
+    forEachSelected((ref) => {
+      if (!styles[ref]) styles[ref] = {};
+      const s = styles[ref];
+
+      if (format === "general") {
+        delete s.format;
+      } else {
+        s.format = format;
+        // Explicit format menang → clear toggles
+        delete s.percent;
+        delete s.currency;
+      }
+
+      cleanupStyle(ref);
+    });
+  }
+
+  /* =========================================================
+     Bulk operations
+     ========================================================= */
 
   function clearContent() {
     forEachSelected((ref) => {
@@ -383,54 +501,6 @@ export function useSheet(options: UseSheetOptions = {}) {
     return `=${name}(${range})`;
   }
 
-  /* ---------- Decimal adjustment ---------- */
-
-  function getNumericValue(ref: CellRef): number | null {
-    const raw = data[ref] ?? "";
-    if (raw === "") return null;
-    if (raw.startsWith("=")) {
-      try {
-        const v = engine.evalCell(ref);
-        return typeof v === "number" && Number.isFinite(v) ? v : null;
-      } catch {
-        return null;
-      }
-    }
-    const t = raw.trim();
-    if (t === "" || Number.isNaN(Number(t))) return null;
-    const n = Number(t);
-    return Number.isFinite(n) ? n : null;
-  }
-
-  function adjustDecimals(delta: number) {
-    forEachSelected((ref) => {
-      const cur = styles[ref]?.decimals;
-      let base: number;
-      if (cur !== undefined) {
-        base = cur;
-      } else {
-        // Tidak ada style → mulai dari jumlah desimal nilai saat ini
-        const val = getNumericValue(ref);
-        base = val !== null ? countDecimals(val) : 0;
-      }
-      const next = Math.min(Math.max(base + delta, 0), MAX_DECIMALS);
-      if (!styles[ref]) styles[ref] = {};
-      styles[ref].decimals = next;
-    });
-  }
-
-  function increaseDecimal() {
-    adjustDecimals(1);
-  }
-  function decreaseDecimal() {
-    adjustDecimals(-1);
-  }
-  function togglePercent() {
-    const cur = styles[activeRef.value];
-    const on = !!(cur && cur.percent);
-    setStyle("percent", on ? null : true);
-  }
-
   /* =========================================================
      Action dispatcher
      ---------------------------------------------------------
@@ -467,6 +537,7 @@ export function useSheet(options: UseSheetOptions = {}) {
         return null;
       case "clear-format":
         clearFormat();
+        return null;
       case "increase-decimal":
         increaseDecimal();
         return null;
@@ -475,6 +546,30 @@ export function useSheet(options: UseSheetOptions = {}) {
         return null;
       case "toggle-percent":
         togglePercent();
+        return null;
+      case "toggle-currency":
+        toggleCurrency();
+        return null;
+      case "set-format-general":
+        setCellFormat("general");
+        return null;
+      case "set-format-number":
+        setCellFormat("number");
+        return null;
+      case "set-format-text":
+        setCellFormat("text");
+        return null;
+      case "set-format-accounting":
+        setCellFormat("accounting");
+        return null;
+      case "set-format-scientific":
+        setCellFormat("scientific");
+        return null;
+      case "set-format-currency":
+        setCellFormat("currency");
+        return null;
+      case "set-format-finance":
+        setCellFormat("finance");
         return null;
       case "f-sum":
         return buildFunctionFormula("SUM");
@@ -524,6 +619,8 @@ export function useSheet(options: UseSheetOptions = {}) {
     increaseDecimal,
     decreaseDecimal,
     togglePercent,
+    toggleCurrency,
+    setCellFormat,
     // selection
     selectCell,
     extendTo,

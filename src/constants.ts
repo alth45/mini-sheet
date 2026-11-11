@@ -3,6 +3,8 @@
    Fondasi tipe data untuk seluruh aplikasi.
    ========================================================= */
 
+import type { CellFormat } from "./formatters/cellFormat";
+
 /* ---------- Grid Dimension ---------- */
 /* ---------- Grid Dimension ---------- */
 
@@ -70,6 +72,8 @@ export interface CellStyle {
   align?: AlignValue;
   decimals?: number;
   percent?: boolean;
+  currency?: boolean;
+  format?: CellFormat;
 }
 
 /* ---------- Sheet Data ---------- */
@@ -115,6 +119,14 @@ export type SheetAction =
   | "increase-decimal"
   | "decrease-decimal"
   | "toggle-percent"
+  | "toggle-currency"
+  | "set-format-general"
+  | "set-format-number"
+  | "set-format-text"
+  | "set-format-accounting"
+  | "set-format-scientific"
+  | "set-format-currency"
+  | "set-format-finance"
   | "f-sum"
   | "f-average"
   | "f-max"
@@ -186,40 +198,38 @@ export function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
+/* ---------- Number formatting (cache formatters) ---------- */
+
+const numberFormatters = new Map<number, Intl.NumberFormat>();
+
+function getNumberFormatter(decimals: number): Intl.NumberFormat {
+  let f = numberFormatters.get(decimals);
+  if (!f) {
+    f = new Intl.NumberFormat("id-ID", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+    numberFormatters.set(decimals, f);
+  }
+  return f;
+}
+
+/**
+ * Format angka dengan thousand separator Indonesia + N desimal.
+ * Contoh: 1500000, 0 → "1.500.000"
+ *         1500000, 2 → "1.500.000,00"
+ */
+function formatNumberID(n: number, decimals: number): string {
+  if (!Number.isFinite(n)) return String(n);
+  if (Math.abs(n) >= 1e21) return String(n); // Intl limit fallback
+  return getNumberFormatter(decimals).format(n);
+}
+
 /**
  * Format angka hasil evaluasi untuk ditampilkan.
  * - Bulatkan 10 digit untuk hindari floating-point artifact.
  * - Boolean → "TRUE" / "FALSE".
  */
-export function formatValue(
-  v: EvalValue,
-  decimals?: number,
-  percent?: boolean,
-): string {
-  if (v === null || v === undefined) return "";
-  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-
-  if (typeof v === "number") {
-    if (!Number.isFinite(v)) return "#DIV/0!";
-
-    // Persen: kalikan 100, lalu format dengan decimals + "%"
-    if (percent) {
-      const scaled = v * 100;
-      const d = decimals ?? 0;
-      if (Math.abs(scaled) < 1e21) return scaled.toFixed(d) + "%";
-      return String(scaled) + "%";
-    }
-
-    // Desimal eksplisit
-    if (decimals !== undefined) {
-      if (Math.abs(v) < 1e21) return v.toFixed(decimals);
-    }
-
-    return String(Math.round(v * 1e10) / 1e10);
-  }
-
-  return String(v);
-}
 
 /**
 + * Hitung jumlah digit di belakang koma dari sebuah angka.

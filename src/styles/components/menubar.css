@@ -1,0 +1,206 @@
+/* =========================================================
+   MenuBar Component Styles
+   Dipakai oleh: src/components/MenuBar.vue
+   ========================================================= */
+
+/* =========================================================
+   Menubar container
+   ========================================================= */
+.menubar {
+  height: var(--header-h);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 4px;
+  user-select: none;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+}
+
+/* =========================================================
+   Brand
+   ========================================================= */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 14px;
+  margin-right: 4px;
+  border-right: 1px solid var(--border);
+  height: 24px;
+}
+
+.brand-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--slate-800);
+  letter-spacing: -0.01em;
+}
+
+/* =========================================================
+   Menus row
+   ========================================================= */
+.menus {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.menu {
+  position: relative;
+}
+
+.menu-trigger {
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: var(--slate-600);
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition:
+    background-color var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+.menu-trigger:hover {
+  background: var(--slate-100);
+  color: var(--slate-900);
+}
+
+.menu.open .menu-trigger {
+  background: var(--primary-50);
+  color: var(--primary-700);
+}
+
+.menu-trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* =========================================================
+   Dropdown panel
+   ========================================================= */
+.menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 232px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 5px;
+  z-index: 200;
+}
+
+/* ---------- Item ---------- */
+.menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  color: var(--slate-700);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease);
+}
+
+.menu-item:hover {
+  background: var(--slate-100);
+}
+
+.menu-item:focus-visible {
+  outline: none;
+  background: var(--primary-50);
+}
+
+.menu-item-icon {
+  color: var(--slate-500);
+  flex-shrink: 0;
+  transition: color var(--dur) var(--ease);
+}
+
+.menu-item:hover .menu-item-icon {
+  color: var(--primary-500);
+}
+
+.menu-item-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-item-shortcut {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--slate-400);
+  background: var(--slate-100);
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--slate-200);
+  transition:
+    background-color var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+.menu-item:hover .menu-item-shortcut {
+  color: var(--slate-600);
+  background: #fff;
+}
+
+/* ---------- Separator ---------- */
+.menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 4px;
+}
+
+/* =========================================================
+   Transition
+   ========================================================= */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition:
+    opacity var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+  transform-origin: top left;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.97);
+}
