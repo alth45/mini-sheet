@@ -28,6 +28,9 @@ import {
   Calculator,
   FlaskConical,
   DollarSign,
+  Grid2x2,
+  SquareDashed,
+  Square,
 } from "lucide-vue-next";
 import type { MenuGroup } from "./types";
 
@@ -123,6 +126,10 @@ export const MENUS: MenuGroup[] = [
         action: "set-format-finance",
         icon: Banknote,
       },
+      { separator: true },
+      { label: "Border: Semua", action: "border-all", icon: Grid2x2 },
+      { label: "Border: Luar", action: "border-outer", icon: Square },
+      { label: "Border: Tanpa", action: "border-none", icon: SquareDashed },
       { separator: true },
       { label: "Hapus Format", action: "clear-format", icon: Eraser },
     ],

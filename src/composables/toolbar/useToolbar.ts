@@ -10,6 +10,13 @@ import {
   Type,
   Calendar,
   Sliders,
+  SquareDashed,
+  Grid2x2,
+  PanelTop,
+  PanelBottom,
+  PanelLeft,
+  PanelRight,
+  Square,
 } from "lucide-vue-next";
 import {
   DEFAULT_FILL_COLOR,
@@ -38,6 +45,61 @@ const FORMAT_ICONS: Record<CellFormat, Component> = {
   "custom-number": Sliders,
 };
 
+/* ---------- Border options ---------- */
+
+import type { BorderScope } from "@/constants";
+
+interface BorderOption {
+  value: BorderScope;
+  label: string;
+  description: string;
+  icon: Component;
+}
+
+const BORDER_OPTIONS: readonly BorderOption[] = [
+  {
+    value: "none",
+    label: "Tanpa Border",
+    description: "Hapus semua border",
+    icon: SquareDashed,
+  },
+  {
+    value: "all",
+    label: "Semua Border",
+    description: "Semua sisi",
+    icon: Grid2x2,
+  },
+  {
+    value: "outer",
+    label: "Border Luar",
+    description: "Hanya perimeter",
+    icon: Square,
+  },
+  {
+    value: "top",
+    label: "Atas",
+    description: "Hanya sisi atas",
+    icon: PanelTop,
+  },
+  {
+    value: "bottom",
+    label: "Bawah",
+    description: "Hanya sisi bawah",
+    icon: PanelBottom,
+  },
+  {
+    value: "left",
+    label: "Kiri",
+    description: "Hanya sisi kiri",
+    icon: PanelLeft,
+  },
+  {
+    value: "right",
+    label: "Kanan",
+    description: "Hanya sisi kanan",
+    icon: PanelRight,
+  },
+];
 /* =========================================================
    Composable
    ========================================================= */
@@ -138,26 +200,98 @@ export function useToolbar(getStyle: () => CellStyle, emit: ToolbarEmit) {
     return FORMAT_ICONS[format];
   }
 
+  /* ---------- Border dropdown ---------- */
+
+  const borderMenuOpen = ref(false);
+  const borderMenuRef = ref<HTMLElement | null>(null);
+  const borderPanelRef = ref<HTMLElement | null>(null);
+  const borderTriggerRef = ref<HTMLElement | null>(null);
+  const borderPanelPosition = ref({ top: 0, left: 0 });
+
+  function computeBorderPanelPosition() {
+    if (!borderTriggerRef.value) return;
+    const rect = borderTriggerRef.value.getBoundingClientRect();
+    const panelWidth = 240;
+    let left = rect.left;
+    if (left + panelWidth > window.innerWidth - 8) {
+      left = window.innerWidth - panelWidth - 8;
+    }
+    borderPanelPosition.value = {
+      top: rect.bottom + 4,
+      left,
+    };
+  }
+
+  function toggleBorderMenu() {
+    if (!borderMenuOpen.value) {
+      computeBorderPanelPosition();
+    }
+    borderMenuOpen.value = !borderMenuOpen.value;
+  }
+
+  function closeBorderMenu() {
+    borderMenuOpen.value = false;
+  }
+
+  function selectBorder(scope: BorderScope) {
+    closeBorderMenu();
+    trigger(`border-${scope}` as SheetAction);
+  }
+
+  /* ---------- Border icon & state ---------- */
+
+  const currentBorderIcon = computed<Component>(() => {
+    const b = getStyle().border;
+    if (!b) return SquareDashed;
+    const hasTop = !!b.top;
+    const hasRight = !!b.right;
+    const hasBottom = !!b.bottom;
+    const hasLeft = !!b.left;
+    const count = [hasTop, hasRight, hasBottom, hasLeft].filter(Boolean).length;
+    if (count === 0) return SquareDashed;
+    if (count === 4) return Grid2x2;
+    if (count === 1) {
+      if (hasTop) return PanelTop;
+      if (hasRight) return PanelRight;
+      if (hasBottom) return PanelBottom;
+      if (hasLeft) return PanelLeft;
+    }
+    return Grid2x2;
+  });
+
+  const hasBorder = computed(() => {
+    const b = getStyle().border;
+    return !!b && Object.keys(b).length > 0;
+  });
+
   /* ---------- Document listeners ---------- */
 
   function handleDocumentClick(e: MouseEvent) {
-    if (!formatMenuOpen.value) return;
     const target = e.target as Node;
-    if (
-      !formatMenuRef.value?.contains(target) &&
-      !panelRef.value?.contains(target)
-    ) {
-      closeFormatMenu();
+    if (formatMenuOpen.value) {
+      const insideFormat =
+        formatMenuRef.value?.contains(target) ||
+        (document.querySelector(".tb-dropdown-panel")?.contains(target) ??
+          false);
+      if (!insideFormat) closeFormatMenu();
+    }
+    if (borderMenuOpen.value) {
+      const insideBorder =
+        borderMenuRef.value?.contains(target) ||
+        borderPanelRef.value?.contains(target);
+      if (!insideBorder) closeBorderMenu();
     }
   }
 
   function handleScrollOrResize() {
     if (formatMenuOpen.value) closeFormatMenu();
+    if (borderMenuOpen.value) closeBorderMenu();
   }
 
   function handleDocumentKeyDown(e: KeyboardEvent) {
-    if (e.key === "Escape" && formatMenuOpen.value) {
-      closeFormatMenu();
+    if (e.key === "Escape") {
+      if (formatMenuOpen.value) closeFormatMenu();
+      if (borderMenuOpen.value) closeBorderMenu();
     }
   }
 
@@ -212,5 +346,18 @@ export function useToolbar(getStyle: () => CellStyle, emit: ToolbarEmit) {
     // format options & icon (untuk template)
     CELL_FORMAT_OPTIONS,
     CheckIcon: Check,
+
+    // border
+    borderMenuOpen,
+    borderMenuRef,
+    borderPanelRef,
+    borderTriggerRef,
+    borderPanelPosition,
+    toggleBorderMenu,
+    closeBorderMenu,
+    selectBorder,
+    currentBorderIcon,
+    hasBorder,
+    BORDER_OPTIONS,
   };
 }

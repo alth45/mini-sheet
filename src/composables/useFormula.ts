@@ -1,10 +1,8 @@
 /* =========================================================
-   MiniSheet — Formula Engine
-   Tokenizer + Recursive Descent Parser
+   MiniSheet — Formula Engine (Refactored)
    ---------------------------------------------------------
-   Design: factory pattern. Engine dibuat via createFormulaEngine()
-   dengan `getRaw` callback → terdecouple dari Vue reactivity,
-   mudah di-test, dan bisa dipakai di luar component.
+   Formula functions dipindah ke ./formula/*
+   File ini hanya: tokenizer, parser, evaluasi cell, helpers.
    ========================================================= */
 
 import {
@@ -14,25 +12,21 @@ import {
   type EvalStack,
   type FormulaArg,
   type RangeArg,
-  type FormulaFunc,
-  type FuncName,
   refToRC,
   rcToRef,
 } from "@/constants";
+import { createHelpers } from "./formula/utils";
+import {
+  FUNCS,
+  FormulaError,
+  type AnyFormulaFunc,
+  type Thunk,
+} from "./formula";
+
+export { FormulaError };
 
 /* =========================================================
-   Error
-   ========================================================= */
-
-export class FormulaError extends Error {
-  constructor(public readonly code: string) {
-    super(code);
-    this.name = "FormulaError";
-  }
-}
-
-/* =========================================================
-   Token
+   Tokenizer
    ========================================================= */
 
 export type Token =
@@ -41,10 +35,6 @@ export type Token =
   | { type: "id"; value: string }
   | { type: "op"; value: string };
 
-/* =========================================================
-   Helpers (pure)
-   ========================================================= */
-
 const TWO_CHAR_OPS = new Set(["<=", ">=", "<>", "=="]);
 const CELL_REF_RE = /^[A-Z]+\d+$/;
 
@@ -52,89 +42,15 @@ function isRangeArg(v: FormulaArg): v is RangeArg {
   return typeof v === "object" && v !== null && "__range" in v;
 }
 
-/** Coerce ke number; lempar FormulaError kalau tidak mungkin. */
-function num(v: FormulaArg): number {
-  if (isRangeArg(v)) throw new FormulaError("#VALUE!");
-  if (typeof v === "number") {
-    if (!Number.isFinite(v)) throw new FormulaError("#DIV/0!");
-    return v;
-  }
-  if (typeof v === "boolean") return v ? 1 : 0;
-  if (v === null || v === undefined) return 0;
-  if (typeof v === "string") {
-    const t = v.trim();
-    if (t === "") return 0;
-    const n = Number(t);
-    if (Number.isNaN(n)) throw new FormulaError("#VALUE!");
-    return n;
-  }
-  throw new FormulaError("#VALUE!");
-}
-
-/** Coerce ke boolean (dipakai IF). */
-function truthy(v: FormulaArg): boolean {
-  if (isRangeArg(v)) return true;
-  if (typeof v === "boolean") return v;
-  if (typeof v === "number") return v !== 0;
-  if (v === null || v === undefined) return false;
-  return String(v).trim() !== "";
-}
-
-/** Bandingkan dua nilai dengan operator. */
-function compareValues(a: EvalValue, b: EvalValue, op: string): boolean {
-  const isNumeric = (v: EvalValue): boolean =>
-    typeof v === "number" ||
-    (typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v)));
-
-  const toStr = (v: EvalValue): string =>
-    v === null || v === undefined ? "" : String(v).toUpperCase();
-
-  let x: number | string;
-  let y: number | string;
-
-  if (isNumeric(a) && isNumeric(b)) {
-    x = Number(a);
-    y = Number(b);
-  } else {
-    x = toStr(a);
-    y = toStr(b);
-  }
-
-  switch (op) {
-    case "=":
-      return x === y;
-    case "<>":
-      return x !== y;
-    case "<":
-      return x < y;
-    case ">":
-      return x > y;
-    case "<=":
-      return x <= y;
-    case ">=":
-      return x >= y;
-  }
-  return false;
-}
-
-/* =========================================================
-   Tokenizer
-   ========================================================= */
-
-export function tokenize(src: string): Token[] {
+function tokenize(src: string): Token[] {
   const tokens: Token[] = [];
   let i = 0;
-
   while (i < src.length) {
     const ch = src[i];
-
-    // whitespace
     if (/\s/.test(ch)) {
       i++;
       continue;
     }
-
-    // number: 123 / 12.5 / .5
     if (/[0-9]/.test(ch) || (ch === "." && /[0-9]/.test(src[i + 1] ?? ""))) {
       let j = i;
       let dots = 0;
@@ -147,8 +63,6 @@ export function tokenize(src: string): Token[] {
       i = j;
       continue;
     }
-
-    // string literal: "abc"
     if (ch === '"') {
       let j = i + 1;
       let s = "";
@@ -161,17 +75,13 @@ export function tokenize(src: string): Token[] {
       i = j + 1;
       continue;
     }
-
-    // identifier: A1, SUM, TRUE, FALSE
     if (/[A-Za-z_]/.test(ch)) {
       let j = i;
-      while (j < src.length && /[A-Za-z0-9_]/.test(src[j])) j++;
+      while (j < src.length && /[A-Za-z0-9_.]/.test(src[j])) j++;
       tokens.push({ type: "id", value: src.slice(i, j).toUpperCase() });
       i = j;
       continue;
     }
-
-    // comparison / equality (1-2 chars)
     if (ch === "<" || ch === ">" || ch === "=") {
       const two = src.substr(i, 2);
       if (TWO_CHAR_OPS.has(two)) {
@@ -183,17 +93,13 @@ export function tokenize(src: string): Token[] {
       i++;
       continue;
     }
-
-    // arithmetic + structural chars
     if ("+-*/^(),:".includes(ch)) {
       tokens.push({ type: "op", value: ch });
       i++;
       continue;
     }
-
     throw new FormulaError("#ERROR!");
   }
-
   return tokens;
 }
 
@@ -204,9 +110,7 @@ export function tokenize(src: string): Token[] {
 export type RawGetter = (ref: CellRef) => CellValue | undefined;
 
 export interface FormulaEngine {
-  /** Evaluasi string formula (boleh dengan atau tanpa leading "="). */
   evaluate(src: string): EvalValue;
-  /** Evaluasi nilai cell. `stack` opsional untuk deteksi circular. */
   evalCell(ref: CellRef, stack?: EvalStack): EvalValue;
 }
 
@@ -215,7 +119,6 @@ export function createFormulaEngine(getRaw: RawGetter): FormulaEngine {
 
   function evalCellImpl(ref: CellRef, stack: EvalStack): EvalValue {
     if (stack.has(ref)) throw new FormulaError("#CIRC!");
-
     const raw = getRaw(ref) ?? "";
     if (raw === "") return null;
 
@@ -239,13 +142,11 @@ export function createFormulaEngine(getRaw: RawGetter): FormulaEngine {
     const pa = refToRC(a);
     const pb = refToRC(b);
     if (!pa || !pb) throw new FormulaError("#REF!");
-
     const out: CellRef[] = [];
     const r1 = Math.min(pa.r, pb.r);
     const r2 = Math.max(pa.r, pb.r);
     const c1 = Math.min(pa.c, pb.c);
     const c2 = Math.max(pa.c, pb.c);
-
     for (let r = r1; r <= r2; r++) {
       for (let c = c1; c <= c2; c++) {
         out.push(rcToRef(c, r));
@@ -270,43 +171,13 @@ export function createFormulaEngine(getRaw: RawGetter): FormulaEngine {
     return out;
   }
 
-  const onlyNumbers = (vals: EvalValue[]): number[] =>
-    vals.filter((v): v is number => typeof v === "number");
+  /* ---------- Helpers (shared with FUNCS) ---------- */
 
-  /* ---------- Built-in functions ---------- */
-
-  const FUNCS: Record<string, FormulaFunc> = {
-    SUM(args, stack) {
-      return onlyNumbers(collectValues(args, stack)).reduce((s, v) => s + v, 0);
-    },
-
-    AVERAGE(args, stack) {
-      const ns = onlyNumbers(collectValues(args, stack));
-      if (ns.length === 0) throw new FormulaError("#DIV/0!");
-      return ns.reduce((s, v) => s + v, 0) / ns.length;
-    },
-
-    MAX(args, stack) {
-      const ns = onlyNumbers(collectValues(args, stack));
-      return ns.length ? Math.max(...ns) : 0;
-    },
-
-    MIN(args, stack) {
-      const ns = onlyNumbers(collectValues(args, stack));
-      return ns.length ? Math.min(...ns) : 0;
-    },
-
-    COUNT(args, stack) {
-      return onlyNumbers(collectValues(args, stack)).length;
-    },
-
-    IF(args) {
-      if (args.length < 2) throw new FormulaError("#ERROR!");
-      const result = truthy(args[0]) ? args[1] : args.length > 2 ? args[2] : false;
-      if (isRangeArg(result)) throw new FormulaError("#VALUE!");
-      return result;
-    },
-  };
+  const helpers = createHelpers({
+    expandRange,
+    evalCell: evalCellImpl,
+    collectValues,
+  });
 
   /* ---------- Parser (recursive descent) ---------- */
 
@@ -329,7 +200,7 @@ export function createFormulaEngine(getRaw: RawGetter): FormulaEngine {
       ) {
         i++;
         const right = parseAdditive();
-        left = compareValues(left, right, op);
+        left = helpers.compareValues(left, right, op);
       }
       return left;
     }
@@ -340,7 +211,10 @@ export function createFormulaEngine(getRaw: RawGetter): FormulaEngine {
       while ((op = peekOp()) === "+" || op === "-") {
         i++;
         const right = parseMultiplicative();
-        left = op === "+" ? num(left) + num(right) : num(left) - num(right);
+        left =
+          op === "+"
+            ? helpers.num(left) + helpers.num(right)
+            : helpers.num(left) - helpers.num(right);
       }
       return left;
     }
@@ -352,11 +226,11 @@ export function createFormulaEngine(getRaw: RawGetter): FormulaEngine {
         i++;
         const right = parseUnary();
         if (op === "/") {
-          const d = num(right);
+          const d = helpers.num(right);
           if (d === 0) throw new FormulaError("#DIV/0!");
-          left = num(left) / d;
+          left = helpers.num(left) / d;
         } else {
-          left = num(left) * num(right);
+          left = helpers.num(left) * helpers.num(right);
         }
       }
       return left;
@@ -366,11 +240,11 @@ export function createFormulaEngine(getRaw: RawGetter): FormulaEngine {
       const op = peekOp();
       if (op === "-") {
         i++;
-        return -num(parseUnary());
+        return -helpers.num(parseUnary());
       }
       if (op === "+") {
         i++;
-        return num(parseUnary());
+        return helpers.num(parseUnary());
       }
       return parsePower();
     }
@@ -379,7 +253,7 @@ export function createFormulaEngine(getRaw: RawGetter): FormulaEngine {
       const base = parsePrimary();
       if (peekOp() === "^") {
         i++;
-        return Math.pow(num(base), num(parsePower()));
+        return Math.pow(helpers.num(base), helpers.num(parsePower()));
       }
       return base;
     }
@@ -408,9 +282,27 @@ export function createFormulaEngine(getRaw: RawGetter): FormulaEngine {
       if (t.type === "id") {
         i++;
 
-        // Function call
         if (peekOp() === "(") {
           i++;
+          const fn: AnyFormulaFunc | undefined = FUNCS[t.value];
+          if (typeof fn !== "function") throw new FormulaError("#NAME?");
+
+          // Lazy function → pass thunks
+          if ("__lazy" in fn) {
+            const thunks: Thunk[] = [];
+            if (peekOp() !== ")") {
+              thunks.push(() => parseArg());
+              while (peekOp() === ",") {
+                i++;
+                thunks.push(() => parseArg());
+              }
+            }
+            if (peekOp() !== ")") throw new FormulaError("#ERROR!");
+            i++;
+            return fn(thunks, stack, helpers);
+          }
+
+          // Eager function → pass values
           const args: FormulaArg[] = [];
           if (peekOp() !== ")") {
             args.push(parseArg());
@@ -421,21 +313,12 @@ export function createFormulaEngine(getRaw: RawGetter): FormulaEngine {
           }
           if (peekOp() !== ")") throw new FormulaError("#ERROR!");
           i++;
-
-          const fn = FUNCS[t.value];
-          if (typeof fn !== "function") throw new FormulaError("#NAME?");
-          return fn(args, stack);
+          return fn(args, stack, helpers);
         }
 
-        // Boolean literal
         if (t.value === "TRUE") return true;
         if (t.value === "FALSE") return false;
-
-        // Cell reference
-        if (CELL_REF_RE.test(t.value)) {
-          return evalCellImpl(t.value, stack);
-        }
-
+        if (CELL_REF_RE.test(t.value)) return evalCellImpl(t.value, stack);
         throw new FormulaError("#NAME?");
       }
 
@@ -447,7 +330,6 @@ export function createFormulaEngine(getRaw: RawGetter): FormulaEngine {
       const t2 = tokens[i + 1];
       const t3 = tokens[i + 2];
 
-      // Deteksi range A1:B5 hanya dalam konteks argument fungsi
       if (
         t &&
         t.type === "id" &&
@@ -481,9 +363,10 @@ export function createFormulaEngine(getRaw: RawGetter): FormulaEngine {
       if (body === "") return null;
       return parseFormula(body, new Set());
     },
-
-    evalCell(ref: CellRef, stack: EvalStack = new Set()): EvalValue {
+    evalCell(ref: CellRef, stack: EvalSet = new Set()): EvalValue {
       return evalCellImpl(ref, stack);
     },
   };
 }
+
+type EvalSet = EvalStack;

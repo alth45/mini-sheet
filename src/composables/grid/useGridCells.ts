@@ -76,6 +76,19 @@ export function useGridCells(
       out.fontWeight = "600";
     }
 
+    // Border via CSS variable
+    if (s.border) {
+      const parts: string[] = [];
+      const b = s.border;
+      if (b.top) parts.push(`inset 0 ${b.top.width}px 0 0 ${b.top.color}`);
+      if (b.right)
+        parts.push(`inset -${b.right.width}px 0 0 0 ${b.right.color}`);
+      if (b.bottom)
+        parts.push(`inset 0 -${b.bottom.width}px 0 0 ${b.bottom.color}`);
+      if (b.left) parts.push(`inset ${b.left.width}px 0 0 0 ${b.left.color}`);
+      if (parts.length) out["--cell-border-shadow"] = parts.join(", ");
+    }
+
     return out;
   }
 

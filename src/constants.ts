@@ -61,6 +61,22 @@ export interface SelectionRect {
 /* ---------- Cell Style ---------- */
 export type AlignValue = "left" | "center" | "right";
 
+/* ---------- Border ---------- */
+
+export interface BorderConfig {
+  width: number;
+  color: string;
+}
+
+export type BorderSide = "top" | "right" | "bottom" | "left";
+export type CellBorder = Partial<Record<BorderSide, BorderConfig>>;
+export type BorderScope = "none" | "all" | "outer" | BorderSide;
+
+export const DEFAULT_BORDER: BorderConfig = {
+  width: 2,
+  color: "#0f172a", // slate-900
+};
+
 export interface CellStyle {
   bold?: boolean;
   italic?: boolean;
@@ -76,6 +92,7 @@ export interface CellStyle {
   customDateFormat?: string;
   customNumberFormat?: string;
   format?: CellFormat;
+  border?: CellBorder;
 }
 
 /* ---------- Sheet Data ---------- */
@@ -131,6 +148,13 @@ export type SheetAction =
   | "set-format-finance"
   | "open-custom-date"
   | "open-custom-number"
+  | "border-none"
+  | "border-all"
+  | "border-outer"
+  | "border-top"
+  | "border-bottom"
+  | "border-left"
+  | "border-right"
   | "f-sum"
   | "f-average"
   | "f-max"

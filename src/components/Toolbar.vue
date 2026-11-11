@@ -58,6 +58,16 @@ const {
   getFormatIcon,
   CELL_FORMAT_OPTIONS,
   CheckIcon,
+  borderMenuOpen,
+  borderMenuRef,
+  borderPanelRef,
+  borderTriggerRef,
+  borderPanelPosition,
+  toggleBorderMenu,
+  selectBorder,
+  currentBorderIcon,
+  hasBorder,
+  BORDER_OPTIONS,
   trigger,
 } = useToolbar(() => props.activeStyle, emit);
 </script>
@@ -305,6 +315,68 @@ const {
         </Transition>
       </Teleport>
     </div>
+
+    <!-- ⬇️ INI YANG BARU ⬇️ -->
+    <div class="tb-divider" />
+
+    <!-- Group: Border -->
+    <div class="tb-group">
+      <div ref="borderMenuRef" class="tb-dropdown">
+        <button
+          ref="borderTriggerRef"
+          type="button"
+          class="tb-btn tb-dropdown-trigger"
+          :class="{ active: hasBorder || borderMenuOpen }"
+          title="Border sel"
+          :aria-expanded="borderMenuOpen"
+          aria-haspopup="menu"
+          @click="toggleBorderMenu"
+        >
+          <component :is="currentBorderIcon" :size="14" :stroke-width="2.25" />
+          <ChevronDown
+            :size="10"
+            :stroke-width="2.5"
+            class="tb-dropdown-chevron"
+          />
+        </button>
+      </div>
+    </div>
+
+    <Teleport to="body">
+      <Transition name="tb-dropdown">
+        <div
+          v-if="borderMenuOpen"
+          ref="borderPanelRef"
+          class="tb-dropdown-panel tb-border-panel"
+          role="menu"
+          :style="{
+            top: borderPanelPosition.top + 'px',
+            left: borderPanelPosition.left + 'px',
+          }"
+        >
+          <button
+            v-for="opt in BORDER_OPTIONS"
+            :key="opt.value"
+            type="button"
+            class="tb-dropdown-item"
+            role="menuitem"
+            @click="selectBorder(opt.value)"
+          >
+            <component
+              :is="opt.icon"
+              :size="14"
+              :stroke-width="2"
+              class="tb-dropdown-item-icon"
+            />
+            <div class="tb-dropdown-item-text">
+              <span class="tb-dropdown-item-label">{{ opt.label }}</span>
+              <span class="tb-dropdown-item-desc">{{ opt.description }}</span>
+            </div>
+          </button>
+        </div>
+      </Transition>
+    </Teleport>
+    <!-- ⬆️ SAMPAI SINI ⬆️ -->
 
     <div class="tb-spacer" />
 

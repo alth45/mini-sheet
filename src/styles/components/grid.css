@@ -157,11 +157,15 @@
   background: #fff;
   cursor: cell;
   position: relative;
+  --cell-border-shadow: inset 0 0 0 0 transparent;
+  box-shadow: var(--cell-border-shadow);
 }
 
 /* Tint seluruh sel dalam range (subtle) */
 .sheet td.cell.in-range {
-  box-shadow: inset 0 0 0 9999px rgba(99, 102, 241, 0.06);
+  box-shadow:
+    var(--cell-border-shadow),
+    inset 0 0 0 9999px rgba(99, 102, 241, 0.06);
 }
 
 /* =========================================================

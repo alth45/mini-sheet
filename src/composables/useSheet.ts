@@ -19,11 +19,14 @@ import {
   type SheetAction,
   type EvalValue,
   type AlignValue,
+  type BorderScope,
+  type CellBorder,
   COLS,
   NROWS,
   COL_W,
   MIN_COL_W,
   MAX_COL_W,
+  DEFAULT_BORDER,
   refToRC,
   rcToRef,
   clamp,
@@ -451,6 +454,46 @@ export function useSheet(options: UseSheetOptions = {}) {
       cleanupStyle(ref);
     });
   }
+  /* ---------- Borders ---------- */
+
+  function setBorder(scope: BorderScope) {
+    const { r1, r2, c1, c2 } = selRect.value;
+
+    forEachSelected((ref) => {
+      const pos = refToRC(ref);
+      if (!pos) return;
+      if (!styles[ref]) styles[ref] = {};
+      const s = styles[ref];
+
+      if (scope === "none") {
+        delete s.border;
+      } else {
+        const cfg = DEFAULT_BORDER;
+        const border: CellBorder = {};
+
+        if (scope === "all") {
+          // Setiap cell: top + left
+          border.top = cfg;
+          border.left = cfg;
+          // Tepi kanan/bawah untuk mencegah dobel di internal
+          if (pos.c === c2) border.right = cfg;
+          if (pos.r === r2) border.bottom = cfg;
+        } else if (scope === "outer") {
+          if (pos.r === r1) border.top = cfg;
+          if (pos.r === r2) border.bottom = cfg;
+          if (pos.c === c1) border.left = cfg;
+          if (pos.c === c2) border.right = cfg;
+        } else {
+          // Single side → replace dengan hanya sisi itu
+          border[scope] = cfg;
+        }
+
+        s.border = border;
+      }
+
+      cleanupStyle(ref);
+    });
+  }
 
   function setCustomDateFormat(pattern: string | null) {
     forEachSelected((ref) => {
@@ -608,6 +651,27 @@ export function useSheet(options: UseSheetOptions = {}) {
       case "open-custom-date":
       case "open-custom-number":
         return null;
+      case "border-none":
+        setBorder("none");
+        return null;
+      case "border-all":
+        setBorder("all");
+        return null;
+      case "border-outer":
+        setBorder("outer");
+        return null;
+      case "border-top":
+        setBorder("top");
+        return null;
+      case "border-bottom":
+        setBorder("bottom");
+        return null;
+      case "border-left":
+        setBorder("left");
+        return null;
+      case "border-right":
+        setBorder("right");
+        return null;
       case "f-sum":
         return buildFunctionFormula("SUM");
       case "f-average":
@@ -660,6 +724,7 @@ export function useSheet(options: UseSheetOptions = {}) {
     setCellFormat,
     setCustomDateFormat,
     setCustomNumberFormat,
+    setBorder,
     // selection
     selectCell,
     extendTo,

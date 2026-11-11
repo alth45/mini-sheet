@@ -359,3 +359,10 @@
   background: var(--border);
   margin: 4px 2px;
 }
+
+/* =========================================================
+   Border dropdown panel
+   ========================================================= */
+.tb-border-panel {
+  min-width: 220px;
+}
